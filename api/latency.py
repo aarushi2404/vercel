@@ -1,30 +1,36 @@
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 import json
 import statistics
 from pathlib import Path
 
-app = FastAPI()
-
-# CORS (required by checker)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 DATA_FILE = Path(__file__).parent.parent / "q-vercel-latency.json"
 
-# IMPORTANT:
-# Route must be "/" because file path already maps to /api/latency
-@app.post("/")
-async def latency(request: Request):
-    body = await request.json()
+def handler(request):
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+            },
+            "body": ""
+        }
+
+    if request.method != "POST":
+        return {
+            "statusCode": 405,
+            "headers": {
+                "Access-Control-Allow-Origin": "*"
+            },
+            "body": json.dumps({"error": "Method not allowed"})
+        }
+
+    body = json.loads(request.body)
     regions = body["regions"]
     threshold = body["threshold_ms"]
 
-    with open(DATA_FILE, "r") as f:
+    with open(DATA_FILE) as f:
         data = json.load(f)
 
     result = {}
@@ -36,9 +42,16 @@ async def latency(request: Request):
 
         result[region] = {
             "avg_latency": round(statistics.mean(latencies), 2),
-            "p95_latency": round(statistics.quantiles(latencies, n=20)[18], 2),
+            "p95_latency": round(sorted(latencies)[int(0.95 * len(latencies)) - 1], 2),
             "avg_uptime": round(statistics.mean(uptimes), 2),
-            "breaches": sum(1 for l in latencies if l > threshold),
+            "breaches": sum(1 for l in latencies if l > threshold)
         }
 
-    return result
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json"
+        },
+        "body": json.dumps(result)
+    }
