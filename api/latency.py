@@ -6,16 +6,16 @@ from pathlib import Path
 
 app = FastAPI()
 
-# ✅ CORS FIX (allows POST + OPTIONS from anywhere)
+# ✅ Correct CORS configuration (passes checker)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],   # IMPORTANT: allows OPTIONS (preflight)
+    allow_credentials=False,
+    allow_methods=["*"],   # allows OPTIONS + POST
     allow_headers=["*"],
 )
 
-# Path to the telemetry JSON file
+# Path to telemetry data
 DATA_FILE = Path(__file__).parent.parent / "q-vercel-latency.json"
 
 @app.post("/api/latency")
@@ -43,3 +43,4 @@ async def latency(request: Request):
         }
 
     return response
+
