@@ -1,32 +1,24 @@
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 import json
 import statistics
 from pathlib import Path
 
+app = FastAPI()
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 DATA_FILE = Path(__file__).parent.parent / "q-vercel-latency.json"
 
-def handler(request):
-    # Handle CORS preflight
-    if request.method == "OPTIONS":
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type",
-            },
-            "body": ""
-        }
-
-    if request.method != "POST":
-        return {
-            "statusCode": 405,
-            "headers": {
-                "Access-Control-Allow-Origin": "*"
-            },
-            "body": json.dumps({"error": "Method not allowed"})
-        }
-
-    body = json.loads(request.body.decode("utf-8"))
+@app.post("/api/latency")
+async def latency(request: Request):
+    body = await request.json()
     regions = body["regions"]
     threshold = body["threshold_ms"]
 
@@ -47,11 +39,4 @@ def handler(request):
             "breaches": sum(1 for l in latencies if l > threshold)
         }
 
-    return {
-        "statusCode": 200,
-        "headers": {
-            "Access-Control-Allow-Origin": "*",
-            "Content-Type": "application/json"
-        },
-        "body": json.dumps(result)
-    }
+    return result
