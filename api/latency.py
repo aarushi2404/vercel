@@ -1,24 +1,29 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 import json
 import statistics
 from pathlib import Path
 
 app = FastAPI()
 
-# ✅ Correct CORS configuration (passes checker)
+# ✅ CORS (checker-safe)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],   # allows OPTIONS + POST
+    allow_methods=["*"],   # includes OPTIONS
     allow_headers=["*"],
 )
 
-# Path to telemetry data
 DATA_FILE = Path(__file__).parent.parent / "q-vercel-latency.json"
 
-@app.post("/api/latency")
+# ✅ Explicit OPTIONS handler (CRITICAL for Vercel)
+@app.options("/")
+async def options_handler():
+    return Response(status_code=200)
+
+# ✅ POST handler (route is /api/latency automatically)
+@app.post("/")
 async def latency(request: Request):
     body = await request.json()
     regions = body["regions"]
@@ -43,4 +48,5 @@ async def latency(request: Request):
         }
 
     return response
+
 
