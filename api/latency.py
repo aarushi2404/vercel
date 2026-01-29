@@ -26,7 +26,7 @@ def handler(request):
             "body": json.dumps({"error": "Method not allowed"})
         }
 
-    body = json.loads(request.body)
+    body = json.loads(request.body.decode("utf-8"))
     regions = body["regions"]
     threshold = body["threshold_ms"]
 
